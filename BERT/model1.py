@@ -26,7 +26,7 @@ print(df['label'].value_counts())
 
 # Custom Dataset class
 class EmailDataset(Dataset):
-    def __init__(self, texts, labels, tokenizer, max_length=512):
+    def __init__(self, texts, labels, tokenizer, max_length=64):
         self.texts = texts
         self.labels = labels
         self.tokenizer = tokenizer
@@ -84,15 +84,16 @@ print(f"Validation set size: {len(X_val)}")
 print(f"Test set size: {len(X_test)}")
 
 # Initialize BERT tokenizer and model
-MODEL_NAME = 'bert-base-uncased'
-tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
-model = BertForSequenceClassification.from_pretrained(
+MODEL_NAME = 'distilbert-base-uncased'
+from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
+
+tokenizer = DistilBertTokenizer.from_pretrained(MODEL_NAME)
+model = DistilBertForSequenceClassification.from_pretrained(
     MODEL_NAME,
     num_labels=2,
     output_attentions=False,
     output_hidden_states=False
 )
-
 # Move model to device
 model = model.to(device)
 
@@ -102,8 +103,15 @@ val_dataset = EmailDataset(X_val, y_val, tokenizer)
 test_dataset = EmailDataset(X_test, y_test, tokenizer)
 
 # Create data loaders
-BATCH_SIZE = 16
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+BATCH_SIZE = 32
+# Add these parameters to your DataLoaders
+train_loader = DataLoader(
+    train_dataset, 
+    batch_size=BATCH_SIZE, 
+    shuffle=True,
+    num_workers=0,  # Parallel data loading
+    pin_memory=True  # Faster GPU transfer
+)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 

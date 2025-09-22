@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.svm import SVC
+from sklearn.svm import LinearSVC  # Changed from SVC
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.pipeline import Pipeline
@@ -41,7 +41,7 @@ class MinimalEmailSpamSVM:
     
     def train(self):
         """Train the minimal SVM model"""
-        print("🤖 Training minimal SVM...")
+        print("🤖 Training minimal LinearSVM...")
         
         # Load data
         X_text, y = self.load_data()
@@ -61,11 +61,23 @@ class MinimalEmailSpamSVM:
         print(f"   Training: {len(X_train):,} emails")
         print(f"   Testing: {len(X_test):,} emails")
         
-        # Create and train model
+        # Create and train model with LinearSVC
         self.model = Pipeline([
             ('scaler', StandardScaler()),
-            ('svm', SVC(kernel='linear', C=1.0, random_state=42))
+            ('svm', LinearSVC(
+                C=1.0, 
+                random_state=42,
+                max_iter=2000,  # Added to prevent convergence warnings
+                dual=False,     # Recommended when n_samples > n_features
+                class_weight='balanced'  # Handle potential class imbalance
+            ))
         ])
+        
+        print(f"⚙️  Using LinearSVM parameters:")
+        print(f"   • C: 1.0 (regularization)")
+        print(f"   • Max iterations: 2000")
+        print(f"   • Dual: False (faster for this dataset size)")
+        print(f"   • Class weight: balanced")
         
         self.model.fit(X_train, y_train)
         
@@ -96,6 +108,9 @@ class MinimalEmailSpamSVM:
         
         # Create visualizations
         fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+        
+        # Update title to reflect LinearSVC
+        fig.suptitle('Minimal LinearSVM Spam Classification Results', fontsize=14, fontweight='bold')
         
         # 1. Confusion Matrix
         cm = confusion_matrix(y_test, y_pred)
@@ -161,8 +176,8 @@ class MinimalEmailSpamSVM:
         
         plt.tight_layout()
         
-        # Save plot
-        output_path = "E:\\Baki\\minimal_svm_results.png"
+        # Save plot with updated name
+        output_path = "E:\\Baki\\minimal_linearsvm_results.png"
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         print(f"\n💾 Results saved: {output_path}")
         plt.show()
@@ -175,6 +190,15 @@ class MinimalEmailSpamSVM:
         print(f"{'Characters':<15} {ham_avg['char_count']:<12.0f} {spam_avg['char_count']:<13.0f} {ham_avg['char_count'] - spam_avg['char_count']:<12.0f}")
         print(f"{'Words':<15} {ham_avg['word_count']:<12.0f} {spam_avg['word_count']:<13.0f} {ham_avg['word_count'] - spam_avg['word_count']:<12.0f}")
         print(f"{'Sentences':<15} {ham_avg['sentence_count']:<12.1f} {spam_avg['sentence_count']:<13.1f} {ham_avg['sentence_count'] - spam_avg['sentence_count']:<12.1f}")
+        
+        # Display LinearSVC-specific information
+        print(f"\n🔧 LINEARSVM MODEL INFO:")
+        print("="*30)
+        print(f"Algorithm: LinearSVC (liblinear)")
+        print(f"Optimization: Faster than SVC for linear problems")
+        print(f"Memory: More efficient for large datasets")
+        print(f"Dual formulation: {self.model.named_steps['svm'].dual}")
+        print(f"Max iterations: {self.model.named_steps['svm'].max_iter}")
     
     def predict_single(self, text):
         """Predict if a single email is spam or ham"""
@@ -192,7 +216,7 @@ class MinimalEmailSpamSVM:
         prediction = self.model.predict(features)[0]
         result = "Spam" if prediction == 1 else "Ham"
         
-        print(f"\n📧 Email Analysis:")
+        print(f"\n📧 Email Analysis (LinearSVM):")
         print(f"   Characters: {features['char_count'][0]}")
         print(f"   Words: {features['word_count'][0]}")
         print(f"   Sentences: {features['sentence_count'][0]}")
@@ -201,23 +225,26 @@ class MinimalEmailSpamSVM:
         return prediction
 
 def run_minimal_spam_detection():
-    """Run the minimal spam detection with only 3 features"""
-    print("🚀 MINIMAL EMAIL SPAM DETECTION")
-    print("Using only 3 features: Character count, Word count, Sentence count")
+    """Run the minimal spam detection with only 3 features using LinearSVC"""
+    print("🚀 MINIMAL EMAIL SPAM DETECTION - LinearSVM")
+    print("Using LinearSVC instead of SVC(kernel='linear')")
+    print("Features: Character count, Word count, Sentence count")
+    print("Benefits: Faster training, more memory efficient")
     print("="*60)
     
     # Initialize and train
     classifier = MinimalEmailSpamSVM()
     model = classifier.train()
     
-    print(f"\n✅ Minimal SVM model ready!")
+    print(f"\n✅ Minimal LinearSVM model ready!")
     print(f"📊 Features used: Only 3 basic length metrics")
+    print(f"⚡ Algorithm: LinearSVC (optimized for linear problems)")
     print(f"📁 Results visualization saved")
     
     return classifier
 
 if __name__ == "__main__":
-    # Run the minimal version
+    # Run the minimal version with LinearSVC
     spam_detector = run_minimal_spam_detection()
     
     # Optional: Test with sample emails
@@ -227,7 +254,7 @@ if __name__ == "__main__":
         if test_choice in ['y', 'yes']:
             
             # Test with a short spam-like text
-            print(f"\n--- Testing Sample Emails ---")
+            print(f"\n--- Testing Sample Emails with LinearSVM ---")
             
             spam_sample = "WIN $1000 NOW! Click here!"
             print(f"\nSample 1 (likely spam): '{spam_sample}'")

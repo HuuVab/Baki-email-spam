@@ -1,6 +1,6 @@
 import pandas as pd
 
-def show_examples_from_dataset(csv_file="E:\\Baki\\final_email_dataset.csv"):
+def show_examples_from_dataset(csv_file="E:\\Baki\\final_email_dataset_cleaned.csv"):
     """
     Show examples of ham (0) and spam (1) emails from the final dataset
     """
