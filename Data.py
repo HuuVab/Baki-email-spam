@@ -470,13 +470,13 @@ def apply_gender_effects_to_credits(credits_attempted, gender_effects):
 
 def generate_complete_synthetic_data():
     """
-    Generate complete synthetic dataset: 2001-2025, 800-1200 students/year, 
+    Generate complete synthetic dataset: 2001-2025, bout 235 students/year, 
     with gender effects and time-series
     """
     print("Generating Complete Synthetic Student Dataset...")
     print("Features:")
     print("- Years: 2001-2025 (25 years)")
-    print("- Students: 800-1200 per year")
+    print("- Students: about 235 per year")
     print("- Gender effects (subtle)")
     print("- Individual time-series (4 academic years)")
     print("- Institutional trends (economic/policy effects)")
@@ -494,7 +494,7 @@ def generate_complete_synthetic_data():
     np.random.seed(42)
     
     for year in range(2001, 2026):
-        num_students = np.random.randint(800, 1201)
+        num_students = np.random.randint(200, 270)
         year_dropouts = {'Male': 0, 'Female': 0}
         year_early_grads = {'Male': 0, 'Female': 0}
         year_gpas = {'Male': [], 'Female': []}
@@ -626,147 +626,6 @@ def generate_complete_synthetic_data():
     
     return df, yearly_stats, archetypes, institutional_trends, gender_stats
 
-def show_comprehensive_analysis(df, yearly_stats, gender_stats):
-    """Show comprehensive dataset analysis"""
-    print("\n" + "="*80)
-    print("COMPREHENSIVE DATASET ANALYSIS")
-    print("="*80)
-    
-    total_students = sum(gender_stats.values())
-    total_records = len(df)
-    years_covered = df['enrollment_year'].nunique()
-    
-    print(f"Dataset Overview:")
-    print(f"  Total records: {total_records:,}")
-    print(f"  Total students: {total_students:,}")
-    print(f"  Years covered: {years_covered} (2001-2025)")
-    print(f"  Average students/year: {total_students/years_covered:.0f}")
-    print(f"  Records per student: {total_records/total_students:.0f}")
-    
-    print(f"\nGender Distribution:")
-    for gender, count in gender_stats.items():
-        print(f"  {gender}: {count:,} ({count/total_students*100:.1f}%)")
-    
-    # Outcome analysis
-    student_outcomes = []
-    for student_id in df['student_id'].unique():
-        student_data = df[df['student_id'] == student_id]
-        gender = student_data['gender'].iloc[0]
-        
-        if 'dropped_out' in student_data['status'].values:
-            outcome = 'dropped_out'
-        elif 'graduated' in student_data['status'].values:
-            sem8_data = student_data[student_data['semester'] == 8]
-            if (len(sem8_data) > 0 and 
-                sem8_data.iloc[0]['credits_attempted'] == 0 and 
-                sem8_data.iloc[0]['cumulative_credits'] >= 132):
-                outcome = 'early_graduate'
-            else:
-                outcome = 'regular_graduate'
-        else:
-            outcome = 'regular_graduate'
-        
-        student_outcomes.append({'student_id': student_id, 'gender': gender, 'outcome': outcome})
-    
-    outcomes_df = pd.DataFrame(student_outcomes)
-    
-    print(f"\nOverall Outcomes:")
-    outcome_counts = outcomes_df['outcome'].value_counts()
-    for outcome, count in outcome_counts.items():
-        print(f"  {outcome}: {count:,} ({count/total_students*100:.1f}%)")
-    # Gender-based outcome analysis
-    print(f"\nOutcomes by Gender:")
-    gender_outcomes = outcomes_df.groupby(['gender', 'outcome']).size().unstack(fill_value=0)
-    
-    for col in ['regular_graduate', 'early_graduate', 'dropped_out']:
-        if col not in gender_outcomes.columns:
-            gender_outcomes[col] = 0
-    
-    gender_outcomes['total'] = gender_outcomes.sum(axis=1)
-    gender_outcomes['dropout_rate'] = (gender_outcomes['dropped_out'] / gender_outcomes['total'] * 100).round(1)
-    gender_outcomes['early_grad_rate'] = (gender_outcomes['early_graduate'] / gender_outcomes['total'] * 100).round(1)
-    
-    print(gender_outcomes[['dropped_out', 'early_graduate', 'regular_graduate', 'dropout_rate', 'early_grad_rate']].to_string())
-    
-    # Time trends
-    print(f"\nTime Trends (First vs Last 3 years):")
-    early_years = [2001, 2002, 2003]
-    late_years = [2023, 2024, 2025]
-    
-    early_data = df[df['enrollment_year'].isin(early_years)]
-    late_data = df[df['enrollment_year'].isin(late_years)]
-    
-    print(f"2001-2003 avg GPA: {early_data['gpa'].mean():.3f}")
-    print(f"2023-2025 avg GPA: {late_data['gpa'].mean():.3f}")
-    print(f"GPA change: {late_data['gpa'].mean() - early_data['gpa'].mean():+.3f}")
-
-def show_sample_student_journeys(df):
-    """Show examples of complete student journeys"""
-    print("\n" + "="*100)
-    print("SAMPLE STUDENT ACADEMIC JOURNEYS")
-    print("="*100)
-    
-    # Show 3 different types of students
-    sample_students = df['student_id'].unique()[:3]
-    
-    for i, student_id in enumerate(sample_students, 1):
-        student_data = df[df['student_id'] == student_id]
-        gender = student_data['gender'].iloc[0]
-        enrollment_year = student_data['enrollment_year'].iloc[0]
-        
-        print(f"\n--- STUDENT {i}: {student_id} ({gender}, Enrolled {enrollment_year}) ---")
-        
-        # Show progression
-        display_cols = ['semester', 'academic_year', 'semester_in_year', 'credits_attempted', 
-                       'credits_earned', 'gpa', 'cumulative_credits', 'cumulative_gpa', 'status']
-        print(student_data[display_cols].to_string(index=False))
-        
-        # Summary
-        final_record = student_data.iloc[-1]
-        print(f"Final: {final_record['cumulative_credits']} credits, {final_record['cumulative_gpa']:.3f} GPA, Status: {final_record['status']}")
-
-def show_institutional_trends_over_time(yearly_stats):
-    """Show how institutional factors changed over 25 years"""
-    print("\n" + "="*80)
-    print("INSTITUTIONAL TRENDS (2001-2025)")
-    print("="*80)
-    
-    years = sorted(yearly_stats.keys())
-    
-    # Show key milestone years
-    milestone_years = [2001, 2008, 2012, 2020, 2025]
-    
-    print("Key Milestone Years:")
-    print("Year | Students | Male Avg GPA | Female Avg GPA | Dropout Rate | Early Grad Rate")
-    print("-" * 75)
-    
-    for year in milestone_years:
-        if year in yearly_stats:
-            stats = yearly_stats[year]
-            male_gpa = stats['avg_gpa'].get('Male', 0)
-            female_gpa = stats['avg_gpa'].get('Female', 0)
-            
-            total_dropouts = stats['dropouts']['Male'] + stats['dropouts']['Female']
-            total_early_grads = stats['early_graduates']['Male'] + stats['early_graduates']['Female']
-            
-            dropout_rate = total_dropouts / stats['students'] * 100
-            early_grad_rate = total_early_grads / stats['students'] * 100
-            
-            print(f"{year} |   {stats['students']:4d}   |    {male_gpa:5.2f}     |     {female_gpa:5.2f}      |    {dropout_rate:4.1f}%    |     {early_grad_rate:4.1f}%")
-    
-    # Show overall trends
-    first_year_stats = yearly_stats[2001]
-    last_year_stats = yearly_stats[2025]
-    
-    print(f"\n25-Year Trends:")
-    first_male_gpa = first_year_stats['avg_gpa'].get('Male', 0)
-    last_male_gpa = last_year_stats['avg_gpa'].get('Male', 0)
-    first_female_gpa = first_year_stats['avg_gpa'].get('Female', 0)
-    last_female_gpa = last_year_stats['avg_gpa'].get('Female', 0)
-    
-    print(f"Male GPA: {first_male_gpa:.3f} → {last_male_gpa:.3f} ({last_male_gpa - first_male_gpa:+.3f})")
-    print(f"Female GPA: {first_female_gpa:.3f} → {last_female_gpa:.3f} ({last_female_gpa - first_female_gpa:+.3f})")
-
 if __name__ == "__main__":
     np.random.seed(42)
     
@@ -776,6 +635,13 @@ if __name__ == "__main__":
     # Generate the complete dataset
     df, yearly_stats, archetypes, institutional_trends, gender_stats = generate_complete_synthetic_data()
     
+    # Show archetype distribution
+    print(f"\n" + "="*60)
+    print("STUDENT ARCHETYPE DISTRIBUTION")
+    print("="*60)
+    total_students = sum(archetypes.values())
+    for archetype, count in sorted(archetypes.items()):
+        print(f"{archetype:20}: {count:5,} ({count/total_students*100:4.1f}%)")
     
     # Save the complete dataset
     print(f"\nSaving dataset...")
