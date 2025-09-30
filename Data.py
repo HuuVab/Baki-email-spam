@@ -287,6 +287,129 @@ def generate_normal_student_with_noise():
     
     return semesters, archetype
 
+def generate_library_usage_pattern(student_id, archetype, semester, semester_gpa, credits_attempted):
+    """Generate library visits per semester based on student profile"""
+    student_seed = hash(student_id + f"_library_{semester}") % (2**32)
+    np.random.seed(student_seed)
+    
+    # Base visits by archetype
+    archetype_base_visits = {
+        'super_achiever': (25, 45),
+        'overloader': (20, 40),
+        'late_bloomer': (15, 35),
+        'normal': (10, 30),
+        'early_struggler': (8, 25),
+        'burnout': (15, 35),
+        'inconsistent': (5, 30),
+        'part_time': (5, 20),
+        'working_student': (3, 15),
+        'struggling': (5, 20),
+        'repeat_courses': (10, 25),
+        'gap_semesters': (8, 25),
+        'transfer_student': (12, 28)
+    }
+    
+    min_visits, max_visits = archetype_base_visits.get(archetype, (10, 30))
+    base_visits = np.random.randint(min_visits, max_visits + 1)
+    
+    # GPA correlation (higher GPA = more library usage tendency)
+    if semester_gpa >= 3.5:
+        gpa_multiplier = np.random.uniform(1.1, 1.3)
+    elif semester_gpa >= 3.0:
+        gpa_multiplier = np.random.uniform(0.9, 1.1)
+    elif semester_gpa >= 2.5:
+        gpa_multiplier = np.random.uniform(0.7, 0.9)
+    else:
+        gpa_multiplier = np.random.uniform(0.5, 0.8)
+    
+    # Credit load effect (more credits = more library time)
+    credit_multiplier = 0.7 + (credits_attempted / 24) * 0.6
+    
+    # Semester pattern (more visits mid-semester and finals)
+    semester_multiplier = np.random.uniform(0.8, 1.2)
+    
+    # Calculate final visits
+    visits = int(base_visits * gpa_multiplier * credit_multiplier * semester_multiplier)
+    visits = max(0, min(visits, 60))  # Cap at 60 visits per semester
+    
+    # Gap semester = 0 visits
+    if credits_attempted == 0:
+        visits = 0
+    
+    return visits
+
+def generate_training_points(student_id, archetype, semester, cumulative_credits, semester_gpa):
+    """Generate training points from university activities, events, and donations"""
+    student_seed = hash(student_id + f"_training_{semester}") % (2**32)
+    np.random.seed(student_seed)
+    
+    # Base 20 points for good behavior (default for all students)
+    base_behavior_points = 20
+    
+    # Additional engagement points by archetype
+    archetype_engagement = {
+        'super_achiever': (20, 40),      # Highly engaged
+        'overloader': (15, 30),          # Active but busy
+        'normal': (10, 25),              # Moderate
+        'late_bloomer': (10, 30),        # Increases over time
+        'early_struggler': (5, 20),      # Low initially
+        'burnout': (25, 15),             # Starts high, decreases
+        'part_time': (5, 15),            # Limited engagement
+        'working_student': (5, 18),      # Time constrained
+        'struggling': (2, 12),           # Minimal engagement
+        'repeat_courses': (5, 18),       # Focus on academics
+        'inconsistent': (0, 30),         # Very random
+        'gap_semesters': (8, 25),        # Moderate when present
+        'transfer_student': (8, 23)      # Building connections
+    }
+    
+    min_points, max_points = archetype_engagement.get(archetype, (10, 25))
+    
+    # Adjust range based on semester (engagement typically increases)
+    if archetype == 'late_bloomer':
+        min_points += semester * 2
+        max_points += semester * 2
+    elif archetype == 'burnout':
+        min_points -= semester * 2
+        max_points -= semester * 3
+        min_points = max(0, min_points)
+        max_points = max(min_points, max_points)
+    elif archetype == 'early_struggler':
+        if semester >= 3:
+            min_points += (semester - 2) * 2
+            max_points += (semester - 2) * 2
+    
+    engagement_points = np.random.randint(max(0, min_points), max(1, max_points) + 1)
+    
+    # GPA bonus (higher performers more likely to participate)
+    if semester_gpa >= 3.7:
+        gpa_bonus = np.random.randint(8, 15)
+    elif semester_gpa >= 3.5:
+        gpa_bonus = np.random.randint(5, 12)
+    elif semester_gpa >= 3.0:
+        gpa_bonus = np.random.randint(3, 8)
+    elif semester_gpa >= 2.5:
+        gpa_bonus = np.random.randint(0, 5)
+    else:
+        gpa_bonus = 0
+    
+    semester_points = base_behavior_points + engagement_points + gpa_bonus
+    
+    # Good students try to keep it high (>= 80 for high performers)
+    if semester_gpa >= 3.7 and archetype in ['super_achiever', 'overloader']:
+        semester_points = max(semester_points, 85)
+    elif semester_gpa >= 3.5:
+        semester_points = max(semester_points, 75)
+    
+    # Cap at 100 and ensure minimum 20 (base behavior points)
+    semester_points = max(20, min(semester_points, 100))
+    
+    # Gap semester or dropped = 0 points (lost all points)
+    if cumulative_credits == 0:
+        semester_points = 0
+    
+    return semester_points
+
 def generate_yearly_gpa_fluctuations(student_id, base_gpa, archetype):
     """Generate GPA effects over 4 academic years"""
     student_seed = hash(student_id + "_yearly_trends") % (2**32)
@@ -536,6 +659,7 @@ def generate_complete_synthetic_data():
             dropped_out = False
             final_cumulative_credits = 0
             final_cumulative_gpa = 0.0
+            cumulative_training_points = 0
             
             for semester, sem_data in enumerate(journey, 1):
                 if graduated_early or dropped_out:
@@ -553,6 +677,9 @@ def generate_complete_synthetic_data():
                         'gpa': 0.00,
                         'cumulative_credits': final_cumulative_credits,
                         'cumulative_gpa': final_cumulative_gpa,
+                        'library_visits': 0,
+                        'semester_training_points': 0,
+                        'cumulative_training_points': cumulative_training_points,
                         'status': 'graduated' if graduated_early else 'dropped_out'
                     }
                     data.append(record)
@@ -571,6 +698,15 @@ def generate_complete_synthetic_data():
                 else:
                     cumulative_gpa = round(cumulative_grade_points / cumulative_credits, 3) if cumulative_credits > 0 else 0.0
                 
+                # Generate library usage and training points
+                library_visits = generate_library_usage_pattern(
+                    student_id, archetype, semester, semester_gpa, credits_attempted
+                )
+                training_points = generate_training_points(
+                    student_id, archetype, semester, cumulative_credits, semester_gpa
+                )
+                cumulative_training_points += training_points
+                
                 # Record semester
                 record = {
                     'student_id': student_id,
@@ -586,6 +722,9 @@ def generate_complete_synthetic_data():
                     'gpa': semester_gpa,
                     'cumulative_credits': cumulative_credits,
                     'cumulative_gpa': cumulative_gpa,
+                    'library_visits': library_visits,
+                    'semester_training_points': training_points,
+                    'cumulative_training_points': cumulative_training_points,
                     'status': 'active'
                 }
                 data.append(record)
@@ -664,6 +803,8 @@ if __name__ == "__main__":
     print(f"- 13 student archetypes with realistic patterns")
     print(f"- Early graduation and dropout scenarios")
     print(f"- Realistic GPA, credit, and outcome distributions")
+    print(f"- Library usage tracking")
+    print(f"- Training points (extracurricular engagement)")
     
     print(f"\nColumns in dataset:")
     for col in df.columns:
